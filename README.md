@@ -18,6 +18,16 @@ the screen using the rcgl_update method.
 * Scaling of arbitrary sized buffer to arbitrary window sizes.
 * Minimal set-up - start prototyping immediatly
 
+## Planned Features
+
+* Simple graphics primative functions. Lines, Rectangles, Circles, Arcs.
+* Text rendering to buffer.
+* Built in fonts for text rendering. 8x8 CGA, Apple ][, 9x16 VGA, and more.
+* Built in pre-set palettes. Incl. Default VGA, EGA/CGA, Greyscale, and more.
+* Simple mouse and keyboard routines, polling based. Get clicked pixel as buffer coords.
+* Event loop handler, allow program to detect that window wants to close.
+* Togglable vsync. (Currently always on)
+* Non-square pixel scaling. For emulating old compure aspect ratios. (eg. 320x200 as 4:3)
 
 ## Methods
 
@@ -66,8 +76,8 @@ Returns -1 on error writing to the window.
 
     void rcgl_setbuf(uint8_t *b);
 
-Changes the buffer pointer to a new specified buffer. If b is *NULL* then set
-the buffer pointer back to the internal buffer.
+Changes the buffer pointer to a new specified buffer. If **b** is *NULL* then
+set the buffer pointer back to the internal buffer.
 
 ### rcgl_getbuf
 
