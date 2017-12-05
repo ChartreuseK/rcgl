@@ -42,22 +42,22 @@ int main(void)
 		return -1;
 
 	// 16 color CGA palette
-	palette[0] = 0xFF000000;
-	palette[1] = 0xFF0000AA;
-	palette[2] = 0xFF00AA00;
-	palette[3] = 0xFF00AAAA;
-	palette[4] = 0xFFAA0000;
-	palette[5] = 0xFFAA00AA;
-	palette[6] = 0xFFAA5500;
-	palette[7] = 0xFFAAAAAA;
-	palette[8] = 0xFF555555;
-	palette[9] = 0xFF5555FF;
-	palette[10] = 0xFF55FF55;
-	palette[11] = 0xFF55FFFF;
-	palette[12] = 0xFFFF5555;
-	palette[13] = 0xFFFF55FF;
-	palette[14] = 0xFFFFFF55;
-	palette[15] = 0xFFFFFFFF;
+	rcgl_palette[0] = 0xFF000000;
+	rcgl_palette[1] = 0xFF0000AA;
+	rcgl_palette[2] = 0xFF00AA00;
+	rcgl_palette[3] = 0xFF00AAAA;
+	rcgl_palette[4] = 0xFFAA0000;
+	rcgl_palette[5] = 0xFFAA00AA;
+	rcgl_palette[6] = 0xFFAA5500;
+	rcgl_palette[7] = 0xFFAAAAAA;
+	rcgl_palette[8] = 0xFF555555;
+	rcgl_palette[9] = 0xFF5555FF;
+	rcgl_palette[10] = 0xFF55FF55;
+	rcgl_palette[11] = 0xFF55FFFF;
+	rcgl_palette[12] = 0xFFFF5555;
+	rcgl_palette[13] = 0xFFFF55FF;
+	rcgl_palette[14] = 0xFFFFFF55;
+	rcgl_palette[15] = 0xFFFFFFFF;
 
 	buffer = rcgl_getbuf();
 
@@ -88,7 +88,7 @@ int main(void)
 
 			palette[16] = palette[0];
 			for (int i = 1; i < 17; i++)
-				palette[i-1] = palette[i];
+				rcgl_palette[i-1] = rcgl_palette[i];
 		}
 
 		
@@ -104,7 +104,7 @@ int main(void)
 static SDL_Window *wind;
 static SDL_Renderer *rend;
 static SDL_Texture *tx;
-uint32_t palette[256];
+uint32_t rcgl_palette[256];
 static int bw;                  // Buffer width
 static int bh;                  // Buffer height
 static uint8_t *buf;                   // Pointer to user buffer
@@ -263,6 +263,6 @@ static void blit(uint8_t *src, uint32_t *dst)
 {
 	for (int y = 0; y < bh; y++)
 		for (int x = 0; x < bw; x++)
-			*(dst++) = palette[*(src++)];
+			*(dst++) = rcgl_palette[*(src++)];
 }
 

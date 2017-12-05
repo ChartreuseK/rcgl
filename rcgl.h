@@ -54,7 +54,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define RCGL_FULLSCREEN_NATIVE 8
 #define RCGL_INTSCALE	16
 
-extern uint32_t palette[256];
+extern uint32_t rcgl_palette[256];
 int rcgl_init(int w, int h, int ww, int wh, const char *title, int wflags);
 void rcgl_quit(void);
 int rcgl_update(void);
