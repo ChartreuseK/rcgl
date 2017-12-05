@@ -1,6 +1,6 @@
 # RCGL C Graphics Library
 
-**This library is currently unstable and may experience ABI changes**
+**This library is currently unstable and may experience API changes**
 
 A simple graphics library wrapper for SDL2 providing a simple linear
 frame-buffer interface with palettized 256-color.  Designed to allow quick
