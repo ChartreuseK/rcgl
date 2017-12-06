@@ -110,3 +110,30 @@ Return number of milliseconds since start
     void rcgl_plot(int x, int y, uint8_t c);
 
 Plot a pixel to the coordinates x,y with color c
+
+### rcgl_setpalette
+
+    void rcgl_setpalette(const uint32_t palette[256]);
+    
+Copy the specified palette into the palette registers. Can be used to swap
+quickly between multiple palettes, or to return to one of the built-in palettes.
+eg:
+    rcgl_setpalette(RCGL_PALETTE_VGA);
+
+#### Built in palettes
+
+ Palette name     | Description
+ ---------------- | -------
+RCGL_PALETTE_VGA  | The default palette for Mode 13h VGA
+RCGL_PALETTE_GREY | A linear greyscale palette. 0 = #000000, 256 = #FFFFFF
+
+## The Palette
+
+The 256-color palette can be directly manipulated by the program to allow for
+palette swapping effects. It is present as a global variable:
+
+    extern uint32_t rcgl_palette[256];
+
+The values are stored as ARGB (0xaarrggbb) where the alpha channel is ignored
+by the library, allowing for 24-bit color palettes. The palette defaults to
+the values from RCGL_PALETTE_VGA - the Mode 13h VGA palette.

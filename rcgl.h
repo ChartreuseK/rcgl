@@ -60,6 +60,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define RCGL_INTSCALE	16
 
 extern uint32_t rcgl_palette[256];
+
+extern const uint32_t RCGL_PALETTE_VGA[256];
+extern const uint32_t RCGL_PALETTE_GREY[256];
+
 int rcgl_init(int w, int h, int ww, int wh, const char *title, int wflags);
 void rcgl_quit(void);
 int rcgl_update(void);
@@ -69,5 +73,6 @@ int rcgl_hasquit(void);
 void rcgl_delay(uint32_t ms);
 uint32_t rcgl_ticks(void);
 void rcgl_plot(int x, int y, uint8_t c);
+void rcgl_setpalette(const uint32_t palette[256]);
 
 #endif
