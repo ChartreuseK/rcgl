@@ -80,25 +80,21 @@ int main(void)
 
 	int frames = 0;
 	uint32_t starttick = SDL_GetTicks();
-	while (!quit) {
+	while (!rcgl_hasquit()) {
 		rcgl_update();
 		frames++;
-		while (SDL_PollEvent(&event) != 0) {
-			if (event.type == SDL_QUIT)
-				quit = 1;
-		}
-
+		
 		if (frames % 6 == 0)
 		{
 			printf("Avg frame rate: %f\n", (float)frames / ((float)(SDL_GetTicks() - starttick)/1000.0));
 
-			palette[16] = palette[0];
+			rcgl_palette[16] = rcgl_palette[0];
 			for (int i = 1; i < 17; i++)
 				rcgl_palette[i-1] = rcgl_palette[i];
 		}
 
 		
-		
+		rcgl_delay(10);
 			
 	}
 
@@ -111,6 +107,18 @@ static SDL_Window *wind;
 static SDL_Renderer *rend;
 static SDL_Texture *tx;
 static SDL_Thread *thread;
+
+static SDL_cond *initcond;
+static SDL_cond *waitdrawcond;
+static SDL_mutex *mutex;
+static int initstatus;
+static int drawstatus;
+
+static SDL_atomic_t status;
+
+static uint32_t EVENT_TERM;
+static uint32_t EVENT_REDRAW;
+
 uint32_t rcgl_palette[256];
 static int bw;                  // Buffer width
 static int bh;                  // Buffer height
@@ -118,8 +126,14 @@ static uint8_t *buf;                   // Pointer to user buffer
 static uint8_t *ibuf;                  // Internal/Default user buffer
 static int running;				// Is the video thread still alive
 
-static void blit(uint8_t *src, uint32_t *dst);
+static struct CARGS {
+	int w, h, ww, wh;
+	const char *title;
+	int wflags;
+} cargs;
 
+static void blit(uint8_t *src, uint32_t *dst);
+static int videothread(void *data);
 
 #define EVENT_TIMEOUT	100		// Wait 100ms for an event
 
@@ -142,66 +156,57 @@ static void blit(uint8_t *src, uint32_t *dst);
 int rcgl_init(int w, int h, int ww, int wh, const char *title, int wflags)
 {
 	int rval = 0;
-	
-	SDL_Init(SDL_INIT_VIDEO);
-	wind = SDL_CreateWindow(title,
-	           SDL_WINDOWPOS_UNDEFINED,
-	           SDL_WINDOWPOS_UNDEFINED,
-	           ww,
-	           wh,
-	           ((wflags&RCGL_RESIZE)?SDL_WINDOW_RESIZABLE:0)
-	           | ((wflags&RCGL_FULLSCREEN)?SDL_WINDOW_FULLSCREEN:0)
-	           | ((wflags&RCGL_MAXIMIZED)?SDL_WINDOW_MAXIMIZED:0)
-	           | ((wflags&RCGL_FULLSCREEN_NATIVE)?SDL_WINDOW_FULLSCREEN_DESKTOP:0)
-	           | SDL_WINDOW_ALLOW_HIGHDPI);
-	if (wind == NULL) {
-		fprintf(stderr, "RCGL: Failed to create Window: %s\n",
-		        SDL_GetError());
-		rval = -1;
-		goto failwind;
-	}
-	
-	rend = SDL_CreateRenderer(wind, -1, 0);
-	if (rend == NULL) {
-		fprintf(stderr, "RCGL: Failed to create Renderer: %s\n",
-		        SDL_GetError());
-		rval = -1;
-		goto failrend;
-	}
-	SDL_RenderSetLogicalSize(rend, w, h);
-	SDL_RenderSetIntegerScale(rend, wflags & RCGL_INTSCALE);
-	
-	tx = SDL_CreateTexture(rend,
-	                       SDL_PIXELFORMAT_ARGB8888,
-	                       SDL_TEXTUREACCESS_STREAMING,
-	                       w,
-	                       h);GA
-	if (tx == NULL) {
-		fprintf(stderr, "RCGL: Failed to create Texture: %s\n",
-		        SDL_GetError());
-		rval = -1;
-		goto failtx;
-	}
+	int istat;
 
+	bw = w;
+	bh = h;
+
+	cargs.w = w;
+	cargs.h = h;
+	cargs.ww = ww;
+	cargs.wh = wh;
+	cargs.title = title;
+	cargs.wflags = wflags;
+
+	// Create internal framebuffer
 	if ((ibuf = calloc(w*h, sizeof(uint8_t))) == NULL) {
 		fprintf(stderr, "RCGL: Failed to allocate internal framebuffer\n");
-		rval = -2;
+		rval = -1;
 		goto failalloc;
 	}
 	buf = ibuf;
 
-	bw = w;
-	bh = h; 
+	mutex = SDL_CreateMutex();
+	if (mutex == NULL) {
+		fprintf(stderr, "RCGL: Failed to create mutex\n");
+		rval = -2;
+		goto failmutex;
+	}
+	initcond = SDL_CreateCond();
+	if (initcond == NULL) {
+		fprintf(stderr, "RCGL: Failed to create init condition variable\n");
+		rval = -2;
+		goto failcond;
+	}
+	waitdrawcond = SDL_CreateCond();
+	if (waitdrawcond == NULL) {
+		fprintf(stderr, "RCGL: Failed to create wdraw condition variable\n");
+		rval = -2;
+		goto failcond2;
+	}
 
-	SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, 0);
-	SDL_SetRenderDrawColor(rend, 0, 0, 0, 0);
-	SDL_RenderClear(rend);
-	SDL_GL_SetSwapInterval(1);
-	rcgl_update();
+	// Create user defined events
+	EVENT_TERM = SDL_RegisterEvents(2);
+	if (EVENT_TERM == (uint32_t)-1) {
+		fprintf(stderr, "RCGL: Failed to create user events\n");
+		rval = -2;
+		goto failevent;
+	}
+	EVENT_REDRAW = EVENT_TERM+1;
 
-
-	running = 1;
-	// Start-up event handler thread
+	
+	
+	// Start-up video thread
 	thread = SDL_CreateThread(videothread, "RCGLWindowThread", NULL);
 	if (thread == NULL) {
 		fprintf(stderr, "RCGL: Failed to create RCGLWindowThread: %s\n",
@@ -209,31 +214,53 @@ int rcgl_init(int w, int h, int ww, int wh, const char *title, int wflags)
 		rval = -3;
 		goto failthread;
 	}
-	
 
+	// Block till video thread has been initialized, or till an error occurs
+	SDL_LockMutex(mutex);
+	while (!initstatus) {
+		SDL_CondWait(initcond, mutex);
+	}
+	istat = initstatus;
+	SDL_UnlockMutex(mutex);
+	if (istat < 0) { // Failure to init
+		fprintf(stderr, "RCGL: Error intializing in video thread\n");
+		SDL_WaitThread(thread, &rval);
+		goto failthread;
+	}
+	// Otherwise video thread has been launched successfully
 	return rval;
+	// Failure path
 failthread:
+failevent:
+	SDL_DestroyCond(waitdrawcond);
+failcond2:
+	SDL_DestroyCond(initcond);
+failcond:
+	SDL_DestroyMutex(mutex);
+failmutex:
+	free(ibuf);
+	ibuf = NULL;
+	buf = NULL;
 failalloc:
-	SDL_DestroyTexture(tx);
-failtx:
-	SDL_DestroyRenderer(rend);
-failrend:
-	SDL_DestroyWindow(wind);
-failwind:
-	SDL_Quit();
 	return rval;
 }
 
 void rcgl_quit(void)
 {
+	int rval = 0;
+	// Signal to video thread to close down shop
+	SDL_Event event;
+	SDL_zero(event);
+	event.type = EVENT_TERM;
+	SDL_PushEvent(&event);
+
+	// Wait for video thread to quit
+	SDL_WaitThread(thread, &rval);
+	
+	// Finally destroy our buffer
 	if (ibuf)
 		free(ibuf);
 	ibuf = NULL;
-
-	SDL_DestroyTexture(tx);
-	SDL_DestroyRenderer(rend);
-	SDL_DestroyWindow(wind);
-	SDL_Quit();
 }
 
 /*
@@ -243,18 +270,19 @@ int rcgl_update(void)
 {
 	void *rbuf;
 	int rval = 0;
-	int pitch;
 	
-	if (0 == SDL_LockTexture(tx, NULL, &rbuf, &pitch))
-		blit(buf, (uint32_t *)rbuf);	  // Palettize and copy to texture
-	else // Failed to open texture, couldn't render
-		rval = -1;
-	
-	SDL_UnlockTexture(tx);
-	SDL_SetRenderDrawColor(rend, 0, 0, 0, 0);
-	SDL_RenderClear(rend);
-	SDL_RenderCopy(rend, tx, NULL, NULL); // Render texture to entire window
-	SDL_RenderPresent(rend);              // Do update
+
+	SDL_Event event;
+	SDL_zero(event);
+	event.type = EVENT_REDRAW;
+	SDL_PushEvent(&event);
+
+	// Wait for thread to draw changes before returning
+	SDL_LockMutex(mutex);
+	SDL_CondWait(waitdrawcond, mutex);
+
+	rval = drawstatus;
+	SDL_UnlockMutex(mutex);
 
 	return rval;
 }
@@ -279,7 +307,21 @@ uint8_t *rcgl_getbuf(void)
 	return buf;
 }
 
+/*
+ * rcgl_hasquit - Test if program has quit
+ */
+int rcgl_hasquit(void)
+{
+	return SDL_AtomicGet(&status) == 0;
+}
 
+/*
+ * rcgl_delay - Delay for ms milliseconds
+ */
+void rcgl_delay(uint32_t ms)
+{
+	SDL_Delay(ms);
+}
 
 /* INTERNAL LIBRARY HELPER ROUTINES */
 
@@ -301,12 +343,132 @@ static void blit(uint8_t *src, uint32_t *dst)
  */
 static int videothread(void *data)
 {
+	int rval;
 	SDL_Event event;
+	int pitch;
+	void *rbuf;
+	int dstatus;
+
+	/* Video initialization */
+	SDL_Init(SDL_INIT_VIDEO);
+	wind = SDL_CreateWindow(cargs.title,
+	           SDL_WINDOWPOS_UNDEFINED,
+	           SDL_WINDOWPOS_UNDEFINED,
+	           cargs.ww,
+	           cargs.wh,
+	           ((cargs.wflags&RCGL_RESIZE)?SDL_WINDOW_RESIZABLE:0)
+	           | ((cargs.wflags&RCGL_FULLSCREEN)?SDL_WINDOW_FULLSCREEN:0)
+	           | ((cargs.wflags&RCGL_MAXIMIZED)?SDL_WINDOW_MAXIMIZED:0)
+	           | ((cargs.wflags&RCGL_FULLSCREEN_NATIVE)?SDL_WINDOW_FULLSCREEN_DESKTOP:0)
+	           | SDL_WINDOW_ALLOW_HIGHDPI);
+	if (wind == NULL) {
+		fprintf(stderr, "RCGL: Failed to create Window: %s\n",
+		        SDL_GetError());
+		rval = -4;
+		goto failwind;
+	}
+	
+	rend = SDL_CreateRenderer(wind, -1, 0);
+	if (rend == NULL) {
+		fprintf(stderr, "RCGL: Failed to create Renderer: %s\n",
+		        SDL_GetError());
+		rval = -4;
+		goto failrend;
+	}
+	SDL_RenderSetLogicalSize(rend, cargs.w, cargs.h);
+	SDL_RenderSetIntegerScale(rend, cargs.wflags & RCGL_INTSCALE);
+	
+	tx = SDL_CreateTexture(rend,
+	                       SDL_PIXELFORMAT_ARGB8888,
+	                       SDL_TEXTUREACCESS_STREAMING,
+	                       cargs.w,
+	                       cargs.h);
+	if (tx == NULL) {
+		fprintf(stderr, "RCGL: Failed to create Texture: %s\n",
+		        SDL_GetError());
+		rval = -4;
+		goto failtx;
+	}
+
+	SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, 0);
+	SDL_SetRenderDrawColor(rend, 0, 0, 0, 0);
+	SDL_RenderClear(rend);
+	SDL_GL_SetSwapInterval(1);
+
+	SDL_AtomicSet(&status, 1);
+
+	// Signal to parent thread that initialization has been successful
+	SDL_LockMutex(mutex);
+	initstatus = 1;
+	SDL_CondBroadcast(initcond);
+	SDL_UnlockMutex(mutex);
+	
+	running = 1;
 	while (running) {
-		if (SDL_WaitEventTimeout(&event, EVENT_TIMEOUT)) {
-			// Handle event
+		if (SDL_WaitEvent(&event)) {
+			// Handle events
+			do {
+				if (event.type == EVENT_REDRAW) {
+					dstatus = 1;
+					if (0 == SDL_LockTexture(tx, NULL, &rbuf, &pitch)) 
+						blit(buf, (uint32_t *)rbuf);	  // Palettize and copy to texture
+					else // Otherwise Failed to open texture, couldn't render.
+						dstatus = 0;
+						
+					SDL_UnlockTexture(tx);
+					SDL_SetRenderDrawColor(rend, 0, 0, 0, 0);
+					SDL_RenderClear(rend);
+					SDL_RenderCopy(rend, tx, NULL, NULL); // Render texture to entire window
+					SDL_RenderPresent(rend);              // Do update
+
+					// Let update method return now that we're done
+					SDL_LockMutex(mutex);
+					SDL_CondBroadcast(waitdrawcond);
+					drawstatus = dstatus;
+					SDL_UnlockMutex(mutex);
+				}
+				else if (event.type == EVENT_TERM) {
+					SDL_AtomicSet(&status, 0);
+					running = 0;
+				}
+				else switch (event.type) {
+				case SDL_QUIT:
+					SDL_AtomicSet(&status, 0);
+					running = 0;
+					break;
+				case SDL_WINDOWEVENT:
+					// Assume something happened to the window, so just redraw
+					SDL_SetRenderDrawColor(rend, 0, 0, 0, 0);
+					SDL_RenderClear(rend);
+					SDL_RenderCopy(rend, tx, NULL, NULL); // Render texture to entire window
+					SDL_RenderPresent(rend);              // Do update
+					break;
+				
+				}
+				
+			} while (SDL_PollEvent(&event));
 		}
-		
 
 	}
+
+	
+failalloc:
+	SDL_DestroyTexture(tx);
+failtx:
+	SDL_DestroyRenderer(rend);
+failrend:
+	SDL_DestroyWindow(wind);
+failwind:
+	SDL_Quit();
+
+	
+	// Signal to parent thread that we failed
+	if (rval < 0) {
+		SDL_LockMutex(mutex);
+		initstatus = rval;
+		SDL_CondBroadcast(initcond);
+		SDL_UnlockMutex(mutex);
+	}
+	
+	return rval;
 }

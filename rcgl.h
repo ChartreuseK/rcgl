@@ -65,5 +65,6 @@ void rcgl_quit(void);
 int rcgl_update(void);
 void rcgl_setbuf(uint8_t *b);
 uint8_t *rcgl_getbuf(void);
-
+int rcgl_hasquit(void);
+void rcgl_delay(uint32_t ms);
 #endif

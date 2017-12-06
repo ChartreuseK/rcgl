@@ -85,3 +85,16 @@ set the buffer pointer back to the internal buffer.
 
 Returns a pointer to the current buffer. Call this after initialization to get
 a pointer to the internal buffer.
+
+### rcgl_hasquit
+
+    int rcgl_hasquit(void);
+
+Returns *true* if a close event has occured and the video system has terminated
+
+
+### rcgl_delay
+
+    void rcgl_delay(uint32_t ms);
+
+Waits for the given number of milliseconds before returning.
