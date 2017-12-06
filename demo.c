@@ -2,14 +2,14 @@
 
 #include <stdio.h>
 #include <stdint.h>
-
+#include <stdlib.h>
 
 int main(void)
 {
 	uint8_t *buffer;
-	#define WID 160
-	#define HGT 120
-	if (rcgl_init(WID, HGT, WID*8, HGT*8,
+	#define WID 80
+	#define HGT 60
+	if (rcgl_init(WID, HGT, WID*16, HGT*16,
 	              "RCGL Test Window",
 	              RCGL_INTSCALE | RCGL_RESIZE) < 0)
 		return -1;
@@ -34,33 +34,18 @@ int main(void)
 
 	buffer = rcgl_getbuf();
 
-	for (int j = 0; j < HGT; j++) {
-		for (int i = 0; i < WID; i++) {
-			buffer[j * WID + i] = ((i)+j)%16;
-		}
-	}
 	rcgl_update();
 
-	// To add to library
-	int quit = 0;
-
-	int frames = 0;
-	uint32_t starttick = rcgl_ticks();
+	
+	rcgl_delay(5000);
+	
 	while (!rcgl_hasquit()) {
 		rcgl_update();
-		frames++;
-		
-		if (frames % 6 == 0)
-		{
-			printf("Avg frame rate: %f\n", (float)frames / ((float)(rcgl_ticks() - starttick)/1000.0));
 
-			rcgl_palette[16] = rcgl_palette[0];
-			for (int i = 1; i < 17; i++)
-				rcgl_palette[i-1] = rcgl_palette[i];
-		}
+		for (int i = 0; i < 512; i++)
+			rcgl_plot(rand()%WID, rand()%HGT, rand()%16);
 
-		
-		rcgl_delay(10);
+		rcgl_delay(100);
 			
 	}
 
