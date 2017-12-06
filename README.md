@@ -16,16 +16,16 @@ the screen using the rcgl_update method.
 * SDL2 based for cross platform support.
 * 8-bit indexed linear frame-buffer for ease of coding.
 * Scaling of arbitrary sized buffer to arbitrary window sizes.
-* Minimal set-up - start prototyping immediatly
+* Minimal set-up - start prototyping immediatly. See demo.c to see how fast you can be plotting pixels.
+* Built-in preset palettes. Mode 13h VGA (EGA/CGA) and Greyscale
 
 ## Planned Features
 
 * Simple graphics primative functions. Lines, Rectangles, Circles, Arcs.
 * Text rendering to buffer.
 * Built in fonts for text rendering. 8x8 CGA, Apple ][, 9x16 VGA, and more.
-* Built in pre-set palettes. Incl. Default VGA, EGA/CGA, Greyscale, and more.
+* More built-in palettes
 * Simple mouse and keyboard routines, polling based. Get clicked pixel as buffer coords.
-* Event loop handler, allow program to detect that window wants to close.
 * Togglable vsync. (Currently always on)
 * Non-square pixel scaling. For emulating old compure aspect ratios. (eg. 320x200 as 4:3)
 
@@ -118,6 +118,7 @@ Plot a pixel to the coordinates x,y with color c
 Copy the specified palette into the palette registers. Can be used to swap
 quickly between multiple palettes, or to return to one of the built-in palettes.
 eg:
+
     rcgl_setpalette(RCGL_PALETTE_VGA);
 
 #### Built in palettes
