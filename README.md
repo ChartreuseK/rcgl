@@ -98,3 +98,15 @@ Returns *true* if a close event has occured and the video system has terminated
     void rcgl_delay(uint32_t ms);
 
 Waits for the given number of milliseconds before returning.
+
+### rcgl_ticks
+
+    uint32_t rcgl_ticks(void);
+
+Return number of milliseconds since start
+
+### rcgl_plot
+
+    void rcgl_plot(int x, int y, uint8_t c);
+
+Plot a pixel to the coordinates x,y with color c

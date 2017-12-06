@@ -67,4 +67,7 @@ void rcgl_setbuf(uint8_t *b);
 uint8_t *rcgl_getbuf(void);
 int rcgl_hasquit(void);
 void rcgl_delay(uint32_t ms);
+uint32_t rcgl_ticks(void);
+void rcgl_plot(int x, int y, uint8_t c);
+
 #endif

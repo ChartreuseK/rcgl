@@ -36,7 +36,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <stdint.h>
 #include <stdlib.h>
 
-/* Temporary testing main routine */
+/* Temporary demo main routine */
 int main(void)
 {
 	uint8_t *buffer;
@@ -79,14 +79,14 @@ int main(void)
 	SDL_Event event;
 
 	int frames = 0;
-	uint32_t starttick = SDL_GetTicks();
+	uint32_t starttick = rcgl_ticks();
 	while (!rcgl_hasquit()) {
 		rcgl_update();
 		frames++;
 		
 		if (frames % 6 == 0)
 		{
-			printf("Avg frame rate: %f\n", (float)frames / ((float)(SDL_GetTicks() - starttick)/1000.0));
+			printf("Avg frame rate: %f\n", (float)frames / ((float)(rcgl_ticks() - starttick)/1000.0));
 
 			rcgl_palette[16] = rcgl_palette[0];
 			for (int i = 1; i < 17; i++)
@@ -322,6 +322,24 @@ void rcgl_delay(uint32_t ms)
 {
 	SDL_Delay(ms);
 }
+
+/*
+ * rcgl_ticks - Return number of milliseconds since start
+ */
+uint32_t rcgl_ticks(void)
+{
+	return SDL_GetTicks();
+}
+
+/*
+ * rcgl_plot - Plot a pixel at x,y with colour c
+ */
+void rcgl_plot(int x, int y, uint8_t c)
+{
+	buf[y * bw + x] = c;
+}
+
+
 
 /* INTERNAL LIBRARY HELPER ROUTINES */
 
