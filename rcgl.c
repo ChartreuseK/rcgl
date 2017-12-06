@@ -34,6 +34,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rcgl.h"
 #include <SDL2/SDL.h>
 #include <stdint.h>
+#include <stdlib.h>
 
 /* Temporary testing main routine */
 int main(void)
@@ -109,14 +110,18 @@ int main(void)
 static SDL_Window *wind;
 static SDL_Renderer *rend;
 static SDL_Texture *tx;
+static SDL_Thread *thread;
 uint32_t rcgl_palette[256];
 static int bw;                  // Buffer width
 static int bh;                  // Buffer height
 static uint8_t *buf;                   // Pointer to user buffer
 static uint8_t *ibuf;                  // Internal/Default user buffer
+static int running;				// Is the video thread still alive
 
 static void blit(uint8_t *src, uint32_t *dst);
 
+
+#define EVENT_TIMEOUT	100		// Wait 100ms for an event
 
 /* EXPORTED LIBRARY ROUTINES */
 /*
@@ -150,12 +155,16 @@ int rcgl_init(int w, int h, int ww, int wh, const char *title, int wflags)
 	           | ((wflags&RCGL_FULLSCREEN_NATIVE)?SDL_WINDOW_FULLSCREEN_DESKTOP:0)
 	           | SDL_WINDOW_ALLOW_HIGHDPI);
 	if (wind == NULL) {
+		fprintf(stderr, "RCGL: Failed to create Window: %s\n",
+		        SDL_GetError());
 		rval = -1;
 		goto failwind;
 	}
 	
 	rend = SDL_CreateRenderer(wind, -1, 0);
 	if (rend == NULL) {
+		fprintf(stderr, "RCGL: Failed to create Renderer: %s\n",
+		        SDL_GetError());
 		rval = -1;
 		goto failrend;
 	}
@@ -166,13 +175,16 @@ int rcgl_init(int w, int h, int ww, int wh, const char *title, int wflags)
 	                       SDL_PIXELFORMAT_ARGB8888,
 	                       SDL_TEXTUREACCESS_STREAMING,
 	                       w,
-	                       h);
+	                       h);GA
 	if (tx == NULL) {
+		fprintf(stderr, "RCGL: Failed to create Texture: %s\n",
+		        SDL_GetError());
 		rval = -1;
 		goto failtx;
 	}
 
 	if ((ibuf = calloc(w*h, sizeof(uint8_t))) == NULL) {
+		fprintf(stderr, "RCGL: Failed to allocate internal framebuffer\n");
 		rval = -2;
 		goto failalloc;
 	}
@@ -187,10 +199,20 @@ int rcgl_init(int w, int h, int ww, int wh, const char *title, int wflags)
 	SDL_GL_SetSwapInterval(1);
 	rcgl_update();
 
+
+	running = 1;
+	// Start-up event handler thread
+	thread = SDL_CreateThread(videothread, "RCGLWindowThread", NULL);
+	if (thread == NULL) {
+		fprintf(stderr, "RCGL: Failed to create RCGLWindowThread: %s\n",
+		        SDL_GetError());
+		rval = -3;
+		goto failthread;
+	}
 	
 
 	return rval;
-
+failthread:
 failalloc:
 	SDL_DestroyTexture(tx);
 failtx:
@@ -271,3 +293,20 @@ static void blit(uint8_t *src, uint32_t *dst)
 			*(dst++) = rcgl_palette[*(src++)];
 }
 
+/*
+ * Background and screen update handler
+ *
+ * NOTE: This is the only thread allowed to call WaitEvent/PollEvent/PumpEvents
+ * Though to do so we need to move the SDL init code here :/
+ */
+static int videothread(void *data)
+{
+	SDL_Event event;
+	while (running) {
+		if (SDL_WaitEventTimeout(&event, EVENT_TIMEOUT)) {
+			// Handle event
+		}
+		
+
+	}
+}
