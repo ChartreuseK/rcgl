@@ -168,6 +168,9 @@ int rcgl_init(int w, int h, int ww, int wh, const char *title, int wflags)
 		goto failthread;
 	}
 	// Otherwise video thread has been launched successfully
+	// Clear the screen
+	rcgl_update();
+	
 	return rval;
 	// Failure path
 failthread:
@@ -364,6 +367,11 @@ static int videothread(void *data)
 	SDL_RenderClear(rend);
 	SDL_GL_SetSwapInterval(1);
 
+	// Clear initial window
+	SDL_SetRenderDrawColor(rend, 0, 0, 0, 255);
+	SDL_RenderClear(rend);
+	SDL_RenderPresent(rend);              // Do update
+
 	SDL_AtomicSet(&status, 1);
 
 	// Signal to parent thread that initialization has been successful
@@ -372,10 +380,7 @@ static int videothread(void *data)
 	SDL_CondBroadcast(initcond);
 	SDL_UnlockMutex(mutex);
 
-	// Clear initial window
-	SDL_SetRenderDrawColor(rend, 0, 0, 0, 0);
-	SDL_RenderClear(rend);
-	SDL_RenderPresent(rend);              // Do update
+	
 	
 	running = 1;
 	while (running) {
