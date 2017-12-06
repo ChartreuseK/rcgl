@@ -371,6 +371,11 @@ static int videothread(void *data)
 	initstatus = 1;
 	SDL_CondBroadcast(initcond);
 	SDL_UnlockMutex(mutex);
+
+	// Clear initial window
+	SDL_SetRenderDrawColor(rend, 0, 0, 0, 0);
+	SDL_RenderClear(rend);
+	SDL_RenderPresent(rend);              // Do update
 	
 	running = 1;
 	while (running) {
