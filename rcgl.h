@@ -74,5 +74,6 @@ void rcgl_delay(uint32_t ms);
 uint32_t rcgl_ticks(void);
 void rcgl_plot(int x, int y, uint8_t c);
 void rcgl_setpalette(const uint32_t palette[256]);
+void rcgl_line(int x1, int y1, int x2, int y2, uint8_t c);
 
 #endif

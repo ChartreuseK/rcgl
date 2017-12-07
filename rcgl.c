@@ -294,6 +294,62 @@ void rcgl_setpalette(const uint32_t palette[256])
 		rcgl_palette[i] = palette[i];
 }
 
+/*
+ * rcgl_line - Draw a line between two points
+ */
+void rcgl_line(int x1, int y1, int x2, int y2, uint8_t c)
+{
+	// Bresenham's line drawing algorithm
+	int dx, dy;
+	int adx, ady;
+	int x, y;
+	int sdx, sdy;
+	int ex, ey;
+
+	dx = x2 - x1;
+	dy = y2 - y1;
+
+	// With the abs we can pretend to only be in octant 1 or 0
+	adx = abs(dx);
+	ady = abs(dy);
+
+	// Figure out the actual octant for the line
+	sdx = (dx > 0) ? 1 : (dx < 0) ? -1 : 0;
+	sdy = (dy > 0) ? 1 : (dy < 0) ? -1 : 0;
+
+	x = x1;
+	y = y1;
+
+	ex = 0;
+	ey = 0;
+
+	if (adx >= ady) { // Octant 0 (y rises slower than x)
+		for (int i = 0; i <= adx; i++) {
+			rcgl_plot(x, y, c);
+
+			ey += ady;
+			if (ey >= adx) { // If we're past the increment point of y
+				ey -= adx;   // Reset, but propogate error
+				y += sdy;
+			}
+			x += sdx;
+		}
+	}
+	else { // Octant 1 (x rises slower than y)
+		for (int i = 0; i <= ady; i++) {
+			rcgl_plot(x, y, c);
+
+			ex += adx;
+			if (ex >= ady) { // If we're past the increment point of x
+				ex -= ady;   // Reset, but propogate error
+				x += sdx;
+			}
+			y += sdy;
+		}
+	}
+}
+
+
 
 /* INTERNAL LIBRARY HELPER ROUTINES */
 

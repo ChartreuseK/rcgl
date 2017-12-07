@@ -128,6 +128,12 @@ eg:
 RCGL_PALETTE_VGA  | The default palette for Mode 13h VGA
 RCGL_PALETTE_GREY | A linear greyscale palette. 0 = #000000, 256 = #FFFFFF
 
+### rcgl_line
+
+    void rcgl_line(int x1, int y1, int x2, int y2, uint8_t c)
+
+Draw an arbitrary line between two points with color c.
+
 ## The Palette
 
 The 256-color palette can be directly manipulated by the program to allow for
