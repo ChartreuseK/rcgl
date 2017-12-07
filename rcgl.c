@@ -349,6 +349,36 @@ void rcgl_line(int x1, int y1, int x2, int y2, uint8_t c)
 	}
 }
 
+/*
+ * rcgl_blit - Blit a bitmap somewhere onto the framebuffer
+ */
+void rcgl_blit(uint8_t *b, int x, int y, int w, int h, int trans, uint8_t *plt)
+{
+	uint8_t *fb = buf + (y * bw) + x;
+
+	if (plt != NULL) {
+		for (int r = 0; r < h; r++) {
+			for (int c = 0; c < w; c++) {
+				if (trans < 0 || plt[*b] != trans)
+					*fb = plt[*b];
+				b++;
+				fb++;
+			}
+			fb += bw-w;
+		}
+	}
+	else {
+		for (int r = 0; r < h; r++) {
+			for (int c = 0; c < w; c++) {
+				if (trans < 0 || *b != trans)
+					*fb = *b;
+				b++;
+				fb++;
+			}
+			fb += bw-w;
+		}
+	}
+}
 
 
 /* INTERNAL LIBRARY HELPER ROUTINES */

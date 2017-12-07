@@ -134,6 +134,15 @@ RCGL_PALETTE_GREY | A linear greyscale palette. 0 = #000000, 256 = #FFFFFF
 
 Draw an arbitrary line between two points with color c.
 
+### rcgl_blit
+
+    void rcgl_blit(uint8_t *b, int x, int y, int w, int h, int trans, uint8_t *plt)
+
+Copy a bitmap of size *w* x *h* to the buffer at position *x*, *y*.
+If *trans* >= 0 then any pixels in the bitmap with that value will be ignored
+when blitting. If *plt* is not *NULL* then pixels from *b* will be passed through
+*plt* before being compared to *trans* and before being copied to the buffer.
+
 ## The Palette
 
 The 256-color palette can be directly manipulated by the program to allow for
